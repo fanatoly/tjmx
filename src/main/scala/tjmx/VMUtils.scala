@@ -19,16 +19,17 @@ case class VM(pid: Int, name: String, serviceUrl: JMXServiceURL)
 object VMUtils{
    private final var LOCAL_CONNECTOR_ADDRESS = "com.sun.management.jmxremote.localConnectorAddress";
 
-  def listLocalVms : Map[Int, VM] = getMonitoredVMs ++ getAttachableVMs
   // Yet another copy of what jconsole does
+  def listLocalVms : Map[Int, VM] = getMonitoredVMs ++ getAttachableVMs
+
   private def getMonitoredVMs: Map[Int,VM] = {
     val host = MonitoredHost.getMonitoredHost(new HostIdentifier(null.asInstanceOf[String]))
     val vmPids = host.activeVms()
     vmPids.map{ pid =>
       try {
-        val vmid = new VmIdentifier(pid.toString)
-        val vm = host.getMonitoredVm(vmid)
+        val vm = host.getMonitoredVm(new VmIdentifier(pid.toString))
         val result = VM(pid, MonitoredVmUtil.commandLine(vm), new JMXServiceURL(getUrl(pid)))
+        //TODO: this leaks connections
         vm.detach
         Some(result.pid, result)
       } catch {

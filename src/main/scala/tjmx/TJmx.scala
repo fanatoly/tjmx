@@ -1,5 +1,6 @@
 package tjmx
 
+import fr.janalyse.jmx._
 import scopt._
 
 
@@ -27,7 +28,16 @@ object TJmx extends App{
   }
 
   parser.parse(args, Params()) map { params =>
-    println(VMUtils.listLocalVms)
+    val vms = VMUtils.listLocalVms
+    Stream.continually{
+      vms.values.foreach{ vm =>
+        val jmx = JMX(JMXOptions(url = vm.serviceUrl))
+          println(vm.pid)
+        jmx.mbeans.foreach{ mbean =>
+          println(mbean)
+        }
+    }
+    }.force
   }
 
 }
