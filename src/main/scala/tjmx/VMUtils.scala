@@ -47,7 +47,7 @@ object VMUtils{
     val resultMaybe = catching(classOf[Exception]) opt {
       VirtualMachine.list().map{ vmd =>
         val pid = vmd.id().toInt
-        (pid, VM(pid, vmd.id(), new JMXServiceURL(getUrl(pid))))
+        (pid, VM(pid, vmd.displayName(), new JMXServiceURL(getUrl(pid))))
       }.toMap
     }
     resultMaybe.getOrElse( Map() )

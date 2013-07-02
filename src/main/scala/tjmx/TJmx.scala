@@ -1,6 +1,8 @@
 package tjmx
 
 import fr.janalyse.jmx._
+import java.util.regex.Pattern
+import scala.util.matching.Regex._
 import scopt._
 import scala.util.control.Exception._
 
@@ -10,6 +12,7 @@ case class Params(
   intervalSecs: Long = 15
 )
 
+case class VMConnection(jmx: JMX, vm: VM);
 
 object TJmx extends App{
   val parser = new OptionParser[Params]("TJmx"){
@@ -27,30 +30,30 @@ object TJmx extends App{
     }
   }
 
-  def processConnections(conns: Map[Int, JMX]): Map[Int, JMX] = {
-    conns.filter{ pidConnPair =>
-      val resultOpt = catching(classOf[Exception]) opt {
-        println(pidConnPair._1)
-        pidConnPair._2.mbeans.foreach{ mbean =>
-          println(mbean)
-        }
-      }
+  parser.parse(args, Params()) map { params =>
+    val printer = new MBeanPrinter(params.queries.map{ _.r })
 
-      resultOpt match{
-        case Some(_) => true
-        case _ => false
+    def processConnections(conns: Map[Int, VMConnection]): Map[Int, VMConnection] = {
+      conns.filter{ pidConnPair =>
+        val resultOpt = catching(classOf[Exception]) opt {
+          printer.output(pidConnPair._2)
+        }
+        resultOpt.isDefined
       }
     }
-  }
 
-  def replenishConnections(conns: Map[Int, JMX], vms: Map[Int, VM]): Map[Int, JMX] = {
-    conns ++ vms.filterKeys( !conns.contains(_) ).mapValues( vm => JMX(JMXOptions(url = vm.serviceUrl)) )
-  }
+    def replenishConnections(conns: Map[Int, VMConnection], vms: Map[Int, VM]): Map[Int, VMConnection] = {
+      conns ++ vms.filterKeys( !conns.contains(_) ).mapValues{ vm =>
+        VMConnection(JMX(JMXOptions(url = vm.serviceUrl)), vm)
+      }
+    }
 
-  parser.parse(args, Params()) map { params =>
+
     Stream.iterate(replenishConnections(Map(), VMUtils.listLocalVms)){ conns =>
       val validConns = processConnections(conns)
-      replenishConnections(validConns, VMUtils.listLocalVms)
+      val result = replenishConnections(validConns, VMUtils.listLocalVms)
+      Thread.sleep(params.intervalSecs * 1000)
+      result
     }.force
   }
 
