@@ -2,7 +2,7 @@ package tjmx
 
 import fr.janalyse.jmx._
 import scopt._
-
+import scala.util.control.Exception._
 
 case class Params(
   queries: List[String] = List("java.lang:type=*"),
@@ -27,16 +27,30 @@ object TJmx extends App{
     }
   }
 
-  parser.parse(args, Params()) map { params =>
-    val vms = VMUtils.listLocalVms
-    Stream.continually{
-      vms.values.foreach{ vm =>
-        val jmx = JMX(JMXOptions(url = vm.serviceUrl))
-          println(vm.pid)
-        jmx.mbeans.foreach{ mbean =>
+  def processConnections(conns: Map[Int, JMX]): Map[Int, JMX] = {
+    conns.filter{ pidConnPair =>
+      val resultOpt = catching(classOf[Exception]) opt {
+        println(pidConnPair._1)
+        pidConnPair._2.mbeans.foreach{ mbean =>
           println(mbean)
         }
+      }
+
+      resultOpt match{
+        case Some(_) => true
+        case _ => false
+      }
     }
+  }
+
+  def replenishConnections(conns: Map[Int, JMX], vms: Map[Int, VM]): Map[Int, JMX] = {
+    conns ++ vms.filterKeys( !conns.contains(_) ).mapValues( vm => JMX(JMXOptions(url = vm.serviceUrl)) )
+  }
+
+  parser.parse(args, Params()) map { params =>
+    Stream.iterate(replenishConnections(Map(), VMUtils.listLocalVms)){ conns =>
+      val validConns = processConnections(conns)
+      replenishConnections(validConns, VMUtils.listLocalVms)
     }.force
   }
 

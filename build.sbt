@@ -13,3 +13,5 @@ libraryDependencies += "com.github.scopt" %% "scopt" % "3.0.0"
 unmanagedClasspath  in Compile += Attributed.blank(file("/usr/lib/jvm/jdk1.7.0/lib/tools.jar"))
 
 unmanagedClasspath  in Runtime += Attributed.blank(file("/usr/lib/jvm/jdk1.7.0/lib/tools.jar"))
+
+fork in Runtime := true
