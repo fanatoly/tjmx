@@ -1,0 +1,4 @@
+TJmx
+=====================================
+
+This utility is intented to be run as part of the tcollector framework. It scans the local machine for JVMs, connects to them via JMX, pulls out metrics and pipes them to tcollector.
