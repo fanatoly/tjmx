@@ -1,3 +1,5 @@
+import xerial.sbt.Pack._
+
 name := "tjmx"
 
 scalaVersion := "2.10.1"
@@ -14,4 +16,11 @@ unmanagedClasspath  in Compile += Attributed.blank(file("/usr/lib/jvm/jdk1.7.0/l
 
 unmanagedClasspath  in Runtime += Attributed.blank(file("/usr/lib/jvm/jdk1.7.0/lib/tools.jar"))
 
-fork in Runtime := true
+//When run without forking, sbt tries to load tools.jar from multiple class loaders. tools.jar in turn tries to pull in native libs. This causes errors.
+fork in Compile := true
+
+seq(packSettings :_*)
+
+packMain := Map("tjmx" -> "tjmx.TJmx")
+
+packJvmOpts := Map("tjmx" -> Seq("-Xms8M"))
