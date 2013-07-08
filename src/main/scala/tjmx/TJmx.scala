@@ -1,14 +1,14 @@
 package tjmx
 
 import fr.janalyse.jmx._
-import java.util.regex.Pattern
+import scala.util.matching.Regex
 import scala.util.matching.Regex._
 import scopt._
 import scala.util.control.Exception._
 
 case class Params(
   queries: List[String] = List("java.lang:type=*"),
-  vmRegex: String = "*",
+  vmRegex: Regex =".*".r,
   intervalSecs: Long = 15
 )
 
@@ -22,7 +22,7 @@ object TJmx extends App{
       params.copy(queries = queries.split(",").toList)
     }
     opt[String]('r', "vm-regex") valueName("<regex>") action { (regex, params)=>
-      params.copy(vmRegex = regex)
+      params.copy(vmRegex = regex.r)
     }
 
     opt[Long]('i', "interval") action{ (i, params) =>
@@ -43,9 +43,13 @@ object TJmx extends App{
     }
 
     def replenishConnections(conns: Map[Int, VMConnection], vms: Map[Int, VM]): Map[Int, VMConnection] = {
-      conns ++ vms.filterKeys( !conns.contains(_) ).mapValues{ vm =>
-        VMConnection(JMX(JMXOptions(url = vm.serviceUrl)), vm)
-      }
+      conns ++ vms.filterKeys( !conns.contains(_) ).
+        filter{
+          case (pid, vm) => params.vmRegex.findFirstIn(vm.name).isDefined
+        }.
+        mapValues{ vm =>
+          VMConnection(JMX(JMXOptions(url = vm.serviceUrl)), vm)
+        }
     }
 
 
