@@ -5,7 +5,7 @@ import scala.util.matching.Regex
 import scala.collection.JavaConversions._
 
 
-class MBeanPrinter(queries: List[Regex]){
+class MBeanPrinter(filter: Regex){
 
   def output(conn: VMConnection){
     val procName = getProcessName(conn)
@@ -24,7 +24,9 @@ class MBeanPrinter(queries: List[Regex]){
   }
 
   private def printVal[T](procName: String, mbean: RichMBean, name: String, v: T, ts: Long){
-    println(s"${formatMBeanName(mbean)}.${name} ${ts} ${v} procName=${formatVal(procName)} ${getTagString(mbean)}")
+    val output = s"${formatMBeanName(mbean)}.${name} ${ts} ${v} procName=${formatVal(procName)} ${getTagString(mbean)}"
+    if(filter.findFirstIn(output).isDefined)
+      println(output)
   }
 
   private def formatVal(v: String) = {

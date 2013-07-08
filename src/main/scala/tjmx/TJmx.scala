@@ -7,7 +7,7 @@ import scopt._
 import scala.util.control.Exception._
 
 case class Params(
-  queries: List[String] = List("java.lang:type=*"),
+  queries: List[String] = List(".*java.lang.*"),
   vmRegex: Regex =".*".r,
   intervalSecs: Long = 15
 )
@@ -31,7 +31,7 @@ object TJmx extends App{
   }
 
   parser.parse(args, Params()) map { params =>
-    val printer = new MBeanPrinter(params.queries.map{ _.r })
+    val printer = new MBeanPrinter(params.queries.map{ "(" + _ + ")" }.mkString("|").r)
 
     def processConnections(conns: Map[Int, VMConnection]): Map[Int, VMConnection] = {
       conns.filter{ pidConnPair =>
