@@ -1,6 +1,7 @@
 package tjmx
 
 import com.sun.tools.attach.VirtualMachine
+import com.sun.tools.attach.VirtualMachineDescriptor
 import java.io.File
 import javax.management.remote.JMXServiceURL
 import sun.jvmstat.monitor.HostIdentifier
@@ -8,7 +9,8 @@ import sun.jvmstat.monitor.MonitoredVmUtil
 import sun.jvmstat.monitor.VmIdentifier
 import sun.management.ConnectorAddressLink
 
-import sun.management.ConnectorAddressLink
+import fr.janalyse.jmx._
+
 import sun.jvmstat.monitor.MonitoredHost
 import scala.collection.JavaConversions._
 
@@ -47,14 +49,23 @@ object VMUtils{
     }.toMap
   }
 
+  // def attemptConnect(pids: Set[Int]) : Map[Int, Option[VMConnection]] = {
+
+  // }
+
   private def getAttachableVMs(knownVms: Map[Int, VM]): Map[Int, VM] = {
-    val resultMaybe = catching(classOf[Exception]) opt {
-      VirtualMachine.list().map{ vmd =>
-        val pid = vmd.id().toInt
-        (pid, VM(pid, vmd.displayName(), new JMXServiceURL(getUrl(pid))))
-      }.filter( pair => !knownVms.contains(pair._1) ).toMap
-    }
-    resultMaybe.getOrElse( Map() )
+
+    val filteredVMDList = VirtualMachine.list().filter( vmd => !knownVms.contains( vmd.id().toInt ) )
+    filteredVMDList.
+      collect{ vmd: VirtualMachineDescriptor =>
+        catching(classOf[Exception]) opt {
+          val pid = vmd.id().toInt
+          (pid, VM(pid, vmd.displayName(), new JMXServiceURL(getUrl(pid))))
+        } match {
+          case Some(pair) => pair
+        }
+      }.toMap
+
   }
 
   private def getUrl(pid: Int) = {

@@ -12,6 +12,8 @@ The runner script is responsible for suplying TJMX with a few pieces of informat
 * the location of the tools.jar library that should be used. This is supplied as a `-Xbootclasspath/a:` parameter
 * The username that the TJMX should run as. This is particularly important as it is not suggested to run a local JMX client as a user different than that of the monitored process.
 
+Most java processes should be set up out of the box - with one notable exception. If you have more than 1 process accessible that is running the same main class/has the same JPS name, you will need to disambiguate. This is done by defining `tjmx.procId` in your process. This will be used to override the JPS process name. You can
+
 ## Example ##
 
 `
@@ -20,6 +22,5 @@ The runner script is responsible for suplying TJMX with a few pieces of informat
 
 
 ## TODO ##
-- Filters on JVMS and Metrics
 - Exclusion filters
 - More resiliance testing
