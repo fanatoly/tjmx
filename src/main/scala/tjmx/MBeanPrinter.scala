@@ -7,10 +7,10 @@ import scala.collection.JavaConversions._
 
 class MBeanPrinter(filter: Regex){
 
-  def output(conn: VMConnection){
-    val procName = getProcessName(conn)
+  def output(jmx: JMX, vm: VM){
+    val procName = getProcessName(jmx, vm)
     val ts = System.currentTimeMillis/1000
-    conn.jmx.mbeans.foreach{ mbean =>
+    jmx.mbeans.foreach{ mbean =>
       mbean.attributes.foreach{
         case dbl: RichNumberAttribute => mbean.getString(dbl).map{ printVal(procName, mbean, dbl.name, _, ts) }
         case composite: RichCompositeDataAttribute => mbean.getNumberComposite(composite).map { numMap =>
@@ -47,8 +47,8 @@ class MBeanPrinter(filter: Regex){
     }
   }
 
-  private def getProcessName(conn: VMConnection) = {
-    conn.jmx.systemProperties.getOrElse("tjmx.procId", conn.vm.name)
+  private def getProcessName(jmx: JMX, vm: VM) = {
+    jmx.systemProperties.getOrElse("tjmx.procId", vm.name)
   }
 
 }
