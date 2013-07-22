@@ -10,7 +10,7 @@ case class Params(
   queries: List[String] = List(".*java.lang.*"),
   vmRegex: Regex =".*".r,
   intervalSecs: Long = 15,
-  blacklistPeriod: Long = 3600000,
+  blacklistPeriod: Long = 6 * 3600000,
   debug: Boolean = false
 )
 
