@@ -23,4 +23,4 @@ seq(packSettings :_*)
 
 packMain := Map("tjmx" -> "tjmx.TJmx")
 
-packJvmOpts := Map("tjmx" -> Seq("-Xms8M"))
+packJvmOpts := Map("tjmx" -> Seq("-Xmx8M"))
