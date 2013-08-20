@@ -40,33 +40,38 @@ object TJmx extends App{
     val printer = new MBeanPrinter(params.queries.map{ "(" + _ + ")" }.mkString("|").r)
 
     def processConnections(conns: Map[Int, VMConnection]): Map[Int, VMConnection] = {
-      conns.filter{ 
-        case (_, VMConnection(Right(jmx), vm)) =>
-          catching(classOf[Exception]) either {
+      conns.map{ 
+        case conn@(pid, VMConnection(Right(jmx), vm)) =>
+          catching(classOf[Throwable]) either {
             printer.output(jmx, vm)
           } match {
             case Left(ex) => {
               if(params.debug) ex.printStackTrace();
-              false
+              (pid, VMConnection(Left(params.blacklistPeriod), vm))
             }
-            case _ => true
+            case _ => conn
           }
-        case _ => true
+        case conn => conn
       }
     }
 
-    def replenishConnections(conns: Map[Int, VMConnection], vms: Map[Int, VM]): Map[Int, VMConnection] = {
-      val filteredConns = conns.filter{
+    def replenishConnections(conns: Map[Int, VMConnection], vms: Map[Int, VM]):
+        Map[Int, VMConnection] = {
+
+      //This list will contain connections that are either on timeout, resulting from a 
+      //failed connection attempt, or with valid connections. This is the set of connections
+      //that DO NOT require a retry.
+      val retainedConns = conns.filter{
         case (pid, VMConnection(Left(failureTime), _)) =>
           failureTime >= System.currentTimeMillis - params.blacklistPeriod
         case _ => true
       }
 
-      filteredConns ++ vms.filterKeys( !filteredConns.contains(_) ).
-        filter{
-          case (pid, vm) => params.vmRegex.findFirstIn(vm.name).isDefined
-        }.
-        map{ vm => (vm._1 ,VMUtils.attemptConnection(vm._2)) }
+      val newConns = vms.filterKeys( !retainedConns.contains(_) )
+        .filter{ case (pid, vm) => params.vmRegex.findFirstIn(vm.name).isDefined }
+        .map{ vm => (vm._1 ,VMUtils.attemptConnection(vm._2)) }
+      if(params.debug) println(s"Replenish results: retained=${retainedConns.size} new=${newConns.size}")
+      retainedConns ++ newConns
     }
 
 
