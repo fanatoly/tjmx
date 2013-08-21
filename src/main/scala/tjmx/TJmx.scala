@@ -37,7 +37,8 @@ object TJmx extends App{
   }
 
   parser.parse(args, Params()) map { params =>
-    val printer = new MBeanPrinter(params.queries.map{ "(" + _ + ")" }.mkString("|").r)
+    val stats = TJmxStats()
+    val printer = new MBeanPrinter(params.queries.map{ "(" + _ + ")" }.mkString("|").r, stats)
 
     def processConnections(conns: Map[Int, VMConnection]): Map[Int, VMConnection] = {
       conns.map{ 
@@ -46,6 +47,8 @@ object TJmx extends App{
             printer.output(jmx, vm)
           } match {
             case Left(ex) => {
+              jmx.close
+              stats.readErrorCount = stats.readErrorCount + 1
               if(params.debug) ex.printStackTrace();
               (pid, VMConnection(Left(params.blacklistPeriod), vm))
             }
@@ -67,13 +70,27 @@ object TJmx extends App{
         case _ => true
       }
 
-      val newConns = vms.filterKeys( !retainedConns.contains(_) )
-        .filter{ case (pid, vm) => params.vmRegex.findFirstIn(vm.name).isDefined }
-        .map{ vm => (vm._1 ,VMUtils.attemptConnection(vm._2)) }
+      val newConns = vms.filterKeys( !retainedConns.contains(_) ).
+        filter{ case (pid, vm) => params.vmRegex.findFirstIn(vm.name).isDefined }.
+        map{ vm =>
+          val newConn = VMUtils.attemptConnection(vm._2)
+          if(newConn.jmx.isLeft) stats.connectErrorCount = stats.connectErrorCount + 1
+          (vm._1 , newConn)
+        }
+
       if(params.debug) println(s"Replenish results: retained=${retainedConns.size} new=${newConns.size}")
       retainedConns ++ newConns
     }
 
+
+    def updateStats(conns: Map[Int, VMConnection], sleepTime: Long) = {
+      stats.lastSleepTime = sleepTime
+      stats.blacklistCount = conns.values.count{
+        case VMConnection(Left(_), _) => true
+        case _ => false
+      }
+      stats.connectionCount = conns.size
+    }
 
     Stream.iterate(Map[Int, VMConnection]()){ conns =>
       val timeIterStart = System.currentTimeMillis
@@ -81,6 +98,7 @@ object TJmx extends App{
       val validConns = processConnections(connectionSet)
 
       val sleepVal = Math.max(0, params.intervalSecs * 1000 - (System.currentTimeMillis - timeIterStart))
+      updateStats(validConns, sleepVal)
       if(params.debug) 
         println(s"Next wake up in ${sleepVal}, Succesfully pulled data from: ${validConns.size}")
 
