@@ -32,17 +32,19 @@ object VMUtils{
     val host = MonitoredHost.getMonitoredHost(new HostIdentifier(null.asInstanceOf[String]))
     val vmPids = host.activeVms()
     vmPids.map{ pid =>
-      val vm = host.getMonitoredVm(new VmIdentifier(pid.toString))
       try {        
-        val result = VM(pid, MonitoredVmUtil.mainClass(vm, false), MonitoredVmUtil.isAttachable(vm))
-        Some(result.pid, result)
+        val vm = host.getMonitoredVm(new VmIdentifier(pid.toString))
+        try{
+          val result = VM(pid, MonitoredVmUtil.mainClass(vm, false), MonitoredVmUtil.isAttachable(vm))
+          Some(result.pid, result)
+        } finally {
+          vm.detach
+        }
       } catch {
         case ex: Exception => {
           ex.printStackTrace()
           None
         }
-      } finally {
-        vm.detach
       }
     }.collect{
         case Some(pair) => pair
