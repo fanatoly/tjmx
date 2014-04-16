@@ -104,7 +104,7 @@ object TJmx extends App{
 
       Thread.sleep(sleepVal)
       validConns
-    }.force
+    }.foreach{ x =>  }
   }
 
 }
